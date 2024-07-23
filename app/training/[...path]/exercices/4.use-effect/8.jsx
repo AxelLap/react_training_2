@@ -3,15 +3,31 @@
 
 import { User2 } from "lucide-react";
 import { useState } from "react";
+import { useEffect } from "react";
 
 // 🦁 Créer une clé `STORAGE_KEY` qui est égale à `storage-name`
+const STORAGE_KEY = "storage-name";
+
+const getInitialValue = (key, initialValue) => {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || initialValue;
+  } catch {
+    console.log("ya une erreur bande de nazes");
+    return initialValue;
+  }
+};
+
+const useStickyState = (key, initialValue) => {
+  const [value, setValue] = useState(getInitialValue(key, initialValue));
+  useEffect(() => {
+    localStorage.setItem(key, JSON.stringify(value));
+    console.log(value);
+  }, [value]);
+  return [value, setValue];
+};
 
 const NameForm = ({ initialName }) => {
-  // 🦁 Comme valeur initiale, récupère la valeur dans le localStorage
-  const [name, setName] = useState(initialName);
-
-  // 🦁 Créer un `useEffect` avec `name` comme dépendance
-  // 🦁 Sauvegarde le `name` dans le localStorage avec la clé définie dans `STORAGE_KEY`
+  const [name, setName] = useStickyState(STORAGE_KEY, initialName);
 
   return (
     <div className="flex flex-col items-center justify-center">
