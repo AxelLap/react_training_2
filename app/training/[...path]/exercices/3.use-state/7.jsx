@@ -1,29 +1,52 @@
 "use client";
 
 import { Mail, User2 } from "lucide-react";
+import { useRef } from "react";
 import { useState } from "react";
+import { useForm, SubmitHandler } from "react-hook-form";
 
 // eslint-disable-next-line no-unused-vars
 export const LoginForm = ({ onSubmit }) => {
-  // 🦁 Utilise 2 states pour le mail et le name
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm();
 
-  // 🦁 Crée une méthode "handleSubmit" qui sera passée au `onSubmit` de `form`
-  // - Commence par empêcher le comportement par défaut du formulaire
-  // - Puis appelle `onSubmit` avec un objet contenant le mail et le name
   return (
     // Ajoute la props `onSubmit`
-    <form className="flex flex-col gap-2">
-      <label className="input input-bordered flex items-center gap-2">
-        <Mail size={16} />
-        {/* 🦁 Contrôle cette input */}
-        <input type="text" className="grow" placeholder="email" />
-      </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-2">
       <label className="input input-bordered flex items-center gap-2">
         <User2 size={16} />
-        {/* 🦁 Contrôle cette input */}
-        <input type="text" className="grow" placeholder="user" />
+        <input
+          {...register("name", {
+            required: true,
+            maxLength: 30,
+          })}
+          type="text"
+          className="grow"
+          placeholder="user"
+        />
       </label>
-      <button type="button" className="btn btn-primary">
+      {errors.name ? <p className="text-error">{errors.name.message}</p> : null}
+      <label className="input input-bordered flex items-center gap-2">
+        <Mail size={16} />
+        <input
+          {...register("mail", {
+            required: "required",
+            pattern: {
+              value: /\S+@\S+\.\S+/,
+              message: "Entered value does not match email format",
+            },
+          })}
+          type="text"
+          className="grow"
+          placeholder="email"
+        />
+      </label>
+      {errors.mail ? <p className="text-error">{errors.mail.message}</p> : null}
+
+      <button type="submit" className="btn btn-primary">
         Submit
       </button>
     </form>
@@ -38,8 +61,8 @@ export default function App() {
       <div className="card w-96 bg-base-100 shadow-xl">
         <div className="card-body">
           <h2 className="card-title">Logged in !</h2>
-          <p>Email : {user.email}</p>
           <p>Name : {user.name}</p>
+          <p>Email : {user.mail}</p>
           <div className="card-actions justify-end">
             <button
               className="btn btn-primary"
