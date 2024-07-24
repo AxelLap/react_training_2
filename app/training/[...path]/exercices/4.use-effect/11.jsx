@@ -1,17 +1,63 @@
 "use client";
 
-const CatFact = () => {
-  // 🦁 Créer 3 états
-  // 1. data = qui contiendra les données de l'API
-  // 2. isError = qui contiendra un boolean pour savoir si une erreur est survenue
-  // 3. isLoading = qui contiendra un boolean pour savoir si la requête est en cours
+import { ok } from "assert";
 
-  // 🦁 Utilise useEffect
-  // Utilise fetch pour récupérer les données de l'API https://catfact.ninja/fact
-  // Utilise .then et si la réponse n'est pas ok, lance une erreur sinon return `res.json`
-  // Rajoute un .then après le premier pour mettre à jour les états (setIsError(false) et setData(data))
-  // Rajoute un .catch pour mettre à jour les états (setIsError(true) et setData(null))
-  // Rajoute un .finally pour mettre à jour l'état isLoading (setIsLoading(false))
+import { useEffect } from "react";
+import { useState } from "react";
+
+const Alert = () => {
+  return (
+    <div role="alert" className="alert alert-error">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-6 w-6 shrink-0 stroke-current"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <span>Erreur lors du chargement.</span>
+    </div>
+  );
+};
+
+const CatFact = () => {
+  const [data, setData] = useState(null);
+  const [isError, setIsError] = useState(false);
+  const [isloading, setIsLoading] = useState(true);
+
+  const url = "https://catfact.ninja/fact";
+
+  //permet de tester l'erreur
+  const wrongUrl = "hgcjdshcgjzhzh";
+
+  useEffect(() => {
+    console.log("Calling");
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Error : ${response.status}`);
+        } else {
+          return response.json();
+        }
+      })
+      .then((jsonCatFact) => {
+        setIsError(false);
+        setData(jsonCatFact);
+      })
+      .catch(() => {
+        setIsError(true);
+        setData(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
 
   return (
     <div className="card card-compact w-96 max-w-sm bg-base-200 shadow-xl">
@@ -24,11 +70,11 @@ const CatFact = () => {
       </figure>
       <div className="card-body">
         <h2 className="card-title">Cat fact</h2>
-        {/* 
-          🦁 Ajoute un loader si ça charge : https://daisyui.com/components/loading/
-          🦁 Ajoute un message d'erreur si isError est true
-          🦁 Affiche la donnée si elle est présente
-        */}
+        {data ? <p>{data.fact}</p> : null}
+        {isError ? <Alert /> : null}
+        {isloading ? (
+          <span className="loading loading-spinner loading-md"></span>
+        ) : null}
       </div>
     </div>
   );
