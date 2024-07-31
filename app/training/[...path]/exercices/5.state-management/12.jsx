@@ -1,66 +1,120 @@
 "use client";
 
-import { User2 } from "lucide-react";
-import { useState } from "react";
+import { User2, X } from "lucide-react";
+import { useRef } from "react";
+import { useEffect } from "react";
+import { createContext, useContext, useState, cloneElement } from "react";
 
-// 🦁 Crée un contexte `DialogContext` avec une valeur par défaut `null`
+const DialogContext = createContext(null);
 
-// 🦁 Crée une fonction `useDialogContext` qui va retourner le contexte `DialogContext`
-// 💡 Utilise `useContext` pour récupérer le contexte `DialogContext`
-// ❌ Si le contexte renvoie null, on va renvoyer une erreur
-// ✅ Sinon on va renvoyer le contexte
-
-// Modifie Dialog pour qu'il injecte le `open, setOpen` dans notre `DialogContext.Provider`
-// https://react.dev/reference/react/createContext#provider
-const Dialog = ({ children, buttonText }) => {
+const Dialog = ({ children }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div>
-      <button onClick={() => setOpen(true)} className="btn">
-        {buttonText}
-      </button>
-      <DialogContent open={open} setOpen={setOpen}>
-        {children}
-      </DialogContent>
-    </div>
+    <DialogContext.Provider value={{ open, setOpen }}>
+      {children}
+    </DialogContext.Provider>
   );
 };
 
-// 🦁 Enlève les props et utilise `useDialogContext` pour récupérer le contexte
-const DialogContent = ({ open, setOpen, children }) => {
-  if (!open) return null;
+const useDialogContext = () => {
+  const context = useContext(DialogContext);
+  if (!context) {
+    throw new Error("useDialogContext must be used within a DialogProvider");
+  }
+  return context;
+};
+
+const DialogTrigger = ({ children }) => {
+  const { setOpen } = useDialogContext();
+  if (typeof children !== "string") {
+    return cloneElement(children, {
+      onClick: () => {
+        setOpen(true);
+      },
+    });
+  }
+};
+
+const useEventListener = (eventName, handler, element = window) => {
+  useEffect(() => {
+    // Créer le gestionnaire de l'eventListener
+    const eventListener = (event) => {
+      handler(event);
+    };
+
+    element.addEventListener(eventName, eventListener);
+
+    return () => {
+      window.removeEventListener(eventName, eventListener);
+    };
+  }, [eventName, handler, element]);
+};
+
+const useClickOutside = (ref, handler) => {
+  useEffect(() => {
+    const listener = (event) => {
+      if (!ref.current || ref.current.contains(event.target)) {
+        return;
+      }
+      handler(event);
+    };
+
+    document.addEventListener("mousedown", listener);
+    document.addEventListener("touchstart", listener);
+
+    return () => {
+      document.removeEventListener("mousedown", listener);
+      document.removeEventListener("touchstart", listener);
+    };
+  }, [ref, handler]);
+};
+
+const DialogContent = ({ children }) => {
+  const { open, setOpen } = useDialogContext();
+  const ref = useRef();
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  useEventListener("keydown", handleKeyDown);
+  useClickOutside(ref, () => setOpen(false));
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-50">
-      <div className="card w-96 bg-base-200 shadow-xl animate-in fade-in-50 slide-in-from-bottom-3">
-        <div className="card-body">
-          {children}
-          {/* 🦁 Enlève ce code */}
-          <div className="card-actions justify-end">
-            <button onClick={() => setOpen(false)} className="btn btn-primary">
-              Close
-            </button>
-          </div>
+    open && (
+      <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-50">
+        <div
+          ref={ref}
+          className="card w-96 bg-base-200 shadow-xl animate-in fade-in-50 slide-in-from-bottom-3"
+        >
+          <div className="card-body">{children}</div>
         </div>
       </div>
-    </div>
+    )
   );
 };
 
-// 🦁 Crée un component DialogTrigger qui prend comme props children
-// Celui-ci va contenir le bouton avec un onClick qui va mettre à jour le state `open`
-// Utilise `useDialogContext` pour récupérer le contexte `DialogContext`
-
-// 🦁 Crée un component DialogClose qui prend comme props children
-// Celui-ci va contenir le bouton avec un onClick qui va mettre à jour le state `open`
-// Utilise `useDialogContext` pour récupérer le contexte `DialogContext`
+const DialogClose = ({ children }) => {
+  const { setOpen } = useContext(DialogContext);
+  if (typeof children !== "string") {
+    return cloneElement(children, {
+      onClick: () => {
+        setOpen(false);
+      },
+    });
+  }
+};
 
 export default function App() {
   return (
-    <div>
-      {/* 🦁 Mets ensemble nos components pour avoir un Dialog fonctionnel */}
-      <Dialog buttonText="Open dialog">
+    <Dialog role="dialog" aria-modal="true">
+      <DialogTrigger>
+        <button className="btn btn-primary btn-lg">Open Dialog Now!</button>
+      </DialogTrigger>
+      <DialogContent>
         <p>What is your name ?</p>
 
         <label className="input input-bordered flex items-center gap-2">
@@ -68,10 +122,14 @@ export default function App() {
           <input type="text" className="grow" placeholder="Username" />
         </label>
         <div className="flex gap-2">
-          {/* 🦁 Ajoute le bouton "Cancel" */}
+          <DialogClose>
+            <button className="absolute right-4 top-4 flex size-6 items-center justify-center rounded-lg bg-base-100">
+              <X size={12} />
+            </button>
+          </DialogClose>
           <button className="btn btn-primary">Submit</button>
         </div>
-      </Dialog>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

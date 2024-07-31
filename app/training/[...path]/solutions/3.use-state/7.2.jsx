@@ -2,7 +2,6 @@
 
 import { Mail, User2 } from "lucide-react";
 import { useState } from "react";
-import { useRef } from "react";
 
 export const LoginForm = ({ onSubmit }) => {
   const [name, setName] = useState("");
