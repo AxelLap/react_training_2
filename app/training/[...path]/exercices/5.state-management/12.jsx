@@ -36,64 +36,128 @@ const DialogTrigger = ({ children }) => {
   }
 };
 
-const useEventListener = (eventName, handler, element = window) => {
+const useEventListener = ({
+  eventName,
+  handler,
+  element = window,
+  isEnabled = true,
+}) => {
+  const handlerRef = useRef(handler);
+
   useEffect(() => {
-    // Créer le gestionnaire de l'eventListener
-    const eventListener = (event) => {
-      handler(event);
+    handlerRef.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    if (!isEnabled) {
+      return;
+    }
+    if (!element) {
+      return;
+    }
+
+    const onEvent = (e) => {
+      handlerRef.current(e);
     };
 
-    element.addEventListener(eventName, eventListener);
+    element.addEventListener(eventName, onEvent);
 
     return () => {
-      window.removeEventListener(eventName, eventListener);
+      window.removeEventListener(eventName, onEvent);
     };
-  }, [eventName, handler, element]);
+  }, [isEnabled, eventName, element]);
 };
 
 const useClickOutside = (ref, handler) => {
-  useEffect(() => {
-    const listener = (event) => {
-      if (!ref.current || ref.current.contains(event.target)) {
+  const listener = (event) => {
+    if (!ref.current || ref.current.contains(event.target)) {
+      return;
+    }
+    handler();
+  };
+
+  useEventListener({
+    handler: listener,
+    eventName: "mousedown",
+  });
+
+  useEventListener({
+    handler: listener,
+    eventName: "touchstart",
+  });
+};
+
+const getFocusableElements = (ref) =>
+  Array.from(
+    ref.current.querySelectorAll(
+      'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'
+    )
+  );
+
+const useFocusTrap = (ref, isEnabled) => {
+  useEventListener({
+    eventName: "keydown",
+    isEnabled,
+    handler: (e) => {
+      if (e.key !== "Tab") {
         return;
       }
-      handler(event);
-    };
+      const focusableElements = getFocusableElements(ref);
 
-    document.addEventListener("mousedown", listener);
-    document.addEventListener("touchstart", listener);
+      const activeElement = document.activeElement;
 
-    return () => {
-      document.removeEventListener("mousedown", listener);
-      document.removeEventListener("touchstart", listener);
-    };
-  }, [ref, handler]);
+      let nextActiveElementIndex = e.shiftKey
+        ? focusableElements.indexOf(activeElement) - 1
+        : focusableElements.indexOf(activeElement) + 1;
+
+      const elementToFocus = focusableElements[nextActiveElementIndex];
+
+      if (elementToFocus) {
+        return;
+      }
+
+      nextActiveElementIndex =
+        nextActiveElementIndex < 0 ? focusableElements.length - 1 : 0;
+
+      focusableElements[nextActiveElementIndex].focus();
+      e.preventDefault();
+    },
+  });
 };
 
 const DialogContent = ({ children }) => {
   const { open, setOpen } = useDialogContext();
-  const ref = useRef();
+  const ref = useRef(null);
 
-  const handleKeyDown = (event) => {
-    if (event.key === "Escape") {
-      setOpen(false);
-    }
-  };
+  useEventListener({
+    isEnabled: open,
+    eventName: "keydown",
+    handler: (e) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+      }
+    },
+  });
 
-  useEventListener("keydown", handleKeyDown);
   useClickOutside(ref, () => setOpen(false));
 
+  useFocusTrap(ref, open);
+
+  if (!open) return null;
+
   return (
-    open && (
-      <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-50">
-        <div
-          ref={ref}
-          className="card w-96 bg-base-200 shadow-xl animate-in fade-in-50 slide-in-from-bottom-3"
-        >
-          <div className="card-body">{children}</div>
-        </div>
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in-50"
+    >
+      <div
+        ref={ref}
+        className="card w-96 bg-base-200 shadow-xl animate-in fade-in-50 slide-in-from-bottom-3"
+      >
+        <div className="card-body">{children}</div>
       </div>
-    )
+    </div>
   );
 };
 
@@ -110,7 +174,7 @@ const DialogClose = ({ children }) => {
 
 export default function App() {
   return (
-    <Dialog role="dialog" aria-modal="true">
+    <Dialog>
       <DialogTrigger>
         <button className="btn btn-primary btn-lg">Open Dialog Now!</button>
       </DialogTrigger>
